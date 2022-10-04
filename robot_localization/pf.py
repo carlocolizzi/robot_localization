@@ -2,6 +2,7 @@
 
 """ This is the starter code for the robot localization project """
 
+from statistics import variance
 import rclpy
 from threading import Thread
 from rclpy.time import Time
@@ -245,6 +246,14 @@ class ParticleFilter(Node):
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
         self.particle_cloud = []
         # TODO create particles
+        particle_variance = 10 # we dont know
+        particle_theta_variance = 20 # assuming degrees
+
+        for i in self.n_particles:
+            x = np.random.randn(xy_theta[0], particle_variance)
+            y = np.random.randn(xy_theta[1], particle_variance)
+            theta = np.random.randn(xy_theta[2], particle_theta_variance)
+            self.particle_cloud[i] =  Particle(x,y,theta)
 
         self.normalize_particles()
         self.update_robot_pose()
