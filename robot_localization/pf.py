@@ -269,7 +269,7 @@ class ParticleFilter(Node):
         current_sum_of_weights = sum(self.particle_cloud.w)
        
         for i in self.n_particles:
-            particle_cloud[i].w = particle_cloud[i].w / current_sum_of_weights
+            self.particle_cloud[i].w = self.particle_cloud[i].w / current_sum_of_weights
 
        
 
