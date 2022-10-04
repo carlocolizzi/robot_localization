@@ -266,9 +266,10 @@ class ParticleFilter(Node):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
         # TODO: test this
         # we want all of the particle weights to sum to 1, to do this, we'll sum all of the current weights and divide each weight by this value
-       current_sum_of_weights = sum(self.particle_cloud.w)
-       for i in self.n_particles:
-           particle_cloud[i].w = particle_cloud[i].w / current_sum_of_weights
+        current_sum_of_weights = sum(self.particle_cloud.w)
+       
+        for i in self.n_particles:
+            particle_cloud[i].w = particle_cloud[i].w / current_sum_of_weights
 
        
 
