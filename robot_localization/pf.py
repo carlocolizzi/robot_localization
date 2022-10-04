@@ -28,7 +28,7 @@ class Particle(object):
             w: the particle weight (the class does not ensure that particle weights are normalized
     """
 
-    def __init__(self, x=0.0, y=0.0, theta=0.0, w=1.0):
+    def __init__(self, x=0.0, y=0.0, theta=0.0, w=0.1):
         """ Construct a new Particle
             x: the x-coordinate of the hypothesis relative to the map frame
             y: the y-coordinate of the hypothesis relative ot the map frame
@@ -185,7 +185,13 @@ class ParticleFilter(Node):
 
         # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
         # just to get started we will fix the robot's pose to always be at the origin
-        self.robot_pose = Pose()
+
+        max_index = 0
+        for i in particle_cloud:
+            if particle_cloud[i].w > particle_cloud[max_index].w :
+                max_index = i
+
+        self.robot_pose = particle_cloud[max_index].as_pose()
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
                                                         self.odom_pose)
@@ -243,8 +249,9 @@ class ParticleFilter(Node):
         if xy_theta is None:
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
         self.particle_cloud = []
-        # TODO create particles
-        particle_variance = 10 # we dont know
+        # TODO create particles 
+        # written, not tested
+        particle_variance = math.pi/2 # we dont know
         particle_theta_variance = 20 # assuming degrees
 
         for i in self.n_particles:
@@ -257,8 +264,13 @@ class ParticleFilter(Node):
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        # TODO: implement this
-        pass
+        # TODO: test this
+        # we want all of the particle weights to sum to 1, to do this, we'll sum all of the current weights and divide each weight by this value
+       current_sum_of_weights = sum(self.particle_cloud.w)
+       for i in self.n_particles:
+           particle_cloud[i].w = particle_cloud[i].w / current_sum_of_weights
+
+       
 
     def publish_particles(self, timestamp):
         particles_conv = []
