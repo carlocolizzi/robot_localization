@@ -45,6 +45,25 @@ class Particle(object):
         return Pose(position=Point(x=self.x, y=self.y, z=0.0),
                     orientation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3]))
 
+
+    def get_weight(self):
+        """ Get the weight of the particle """
+        return self.w
+
+    def get_weight(self):
+        """ Get the weight of the particle """
+        return self.w
+    
+    def get_weight(self):
+        """ Get the weight of the particle """
+        return self.w
+
+    def get_weight(self):
+        """ Get the weight of the particle """
+        return self.w
+
+    
+
     # TODO: define additional helper functions if needed
 
 class ParticleFilter(Node):
@@ -187,11 +206,11 @@ class ParticleFilter(Node):
         # just to get started we will fix the robot's pose to always be at the origin
 
         max_index = 0
-        for i in particle_cloud:
-            if particle_cloud[i].w > particle_cloud[max_index].w :
+        for i in self.particle_cloud:
+            if self.particle_cloud[i].w > self.particle_cloud[max_index].w :
                 max_index = i
 
-        self.robot_pose = particle_cloud[max_index].as_pose()
+        self.robot_pose = self.particle_cloud[max_index].as_pose()
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
                                                         self.odom_pose)
@@ -216,6 +235,10 @@ class ParticleFilter(Node):
             return
 
         # TODO: modify particles using delta
+        for i in range(0, self.particle_cloud):
+            self.particle_cloud[i] = (self.particle_cloud[i].x + delta[0],
+                                        self.particle_cloud[i].y + delta[1],
+                                        self.particle_cloud[i].theta + delta[2])
 
     def resample_particles(self):
         """ Resample the particles according to the new particle weights.
@@ -254,11 +277,11 @@ class ParticleFilter(Node):
         particle_variance = math.pi/2 # we dont know
         particle_theta_variance = 20 # assuming degrees
 
-        for i in self.n_particles:
-            x = np.random.randn(xy_theta[0], particle_variance)
-            y = np.random.randn(xy_theta[1], particle_variance)
-            theta = np.random.randn(xy_theta[2], particle_theta_variance)
-            self.particle_cloud[i] =  Particle(x,y,theta)
+        for i in range(0,self.n_particles):
+            x = np.random.randn(int(xy_theta[0]), int(particle_variance)) ##int
+            y = np.random.randn(int(xy_theta[1]), int(particle_variance))
+            theta = np.random.randn(int(xy_theta[2]), int(particle_theta_variance))
+            self.particle_cloud.append(Particle(x,y,theta))
 
         self.normalize_particles()
 
@@ -266,12 +289,12 @@ class ParticleFilter(Node):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
         # TODO: test this
         # we want all of the particle weights to sum to 1, to do this, we'll sum all of the current weights and divide each weight by this value
-        current_sum_of_weights = sum(self.particle_cloud.w)
+        current_sum_of_weights = 0
+        for i in range(0, self.n_particles):
+            current_sum_of_weights += self.particle_cloud[i].get_weight()
        
-        for i in self.n_particles:
-            self.particle_cloud[i].w = self.particle_cloud[i].w / current_sum_of_weights
-
-       
+        for i in range(0, self.n_particles):
+            self.particle_cloud[i].w = self.particle_cloud[i].get_weight() / current_sum_of_weights
 
     def publish_particles(self, timestamp):
         particles_conv = []
