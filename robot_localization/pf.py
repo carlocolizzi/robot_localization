@@ -50,19 +50,6 @@ class Particle(object):
         """ Get the weight of the particle """
         return self.w
 
-    def get_weight(self):
-        """ Get the weight of the particle """
-        return self.w
-    
-    def get_weight(self):
-        """ Get the weight of the particle """
-        return self.w
-
-    def get_weight(self):
-        """ Get the weight of the particle """
-        return self.w
-
-    
 
     # TODO: define additional helper functions if needed
 
@@ -256,6 +243,7 @@ class ParticleFilter(Node):
             probabilities_of_particles.append(particle_cloud[i].w)
         self.particle_cloud = draw_random_sample(self.particle_cloud,probabilities_of_particles,self.n_particles)
 
+
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
             r: the distance readings to obstacles
@@ -263,9 +251,21 @@ class ParticleFilter(Node):
         """
         # TODO: implement this
         pass
-        # this isnt right yet. I'm starting with just checking the closest point, as what occupancy field has built in
-        occupancy_field.get_closest_obstacle_distance(robot_pose.x,robot_pose.y)
+        # not tested
+        closest_obstacle_distance = min(r)
+        closest_obstacle_angle = theta[closest_obstacle_distance]
 
+        for i in range(0,n_particles)
+            [closest_to_particle_x, closest_to_particle_y] = occupancy_field.get_closest_obstacle_distance(particle_cloud[i].x, particle_cloud[i].y)
+            x_diff = particle_cloud[i].x - closest_to_particle_x
+            y_diff = particle_cloud[i].y - closest_to_particle_y
+            closest_to_particle_distance = sqrt(x_diff^2 + y_diff^2)
+            closest_to_particle_angle = tan2(y_diff, x_diff)
+
+            similarity = min(closest_obstacle_distance,closest_to_particle_distance)/(closest_obstacle_distance + closest_to_particle_distance) * min(closest_obstacle_angle,closest_to_particle_angle)/(closest_obstacle_angle,closest_to_particle_angle)
+            particle_cloud[i].w = particle_cloud[i].w * similarity
+            
+        normalize_particles()
 
         
 
