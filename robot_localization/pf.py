@@ -235,6 +235,7 @@ class ParticleFilter(Node):
             return
 
         # TODO: modify particles using delta
+        ## not testted
         for i in range(0, self.particle_cloud):
             self.particle_cloud[i] = (self.particle_cloud[i].x + delta[0],
                                         self.particle_cloud[i].y + delta[1],
@@ -249,6 +250,11 @@ class ParticleFilter(Node):
         # make sure the distribution is normalized
         self.normalize_particles()
         # TODO: fill out the rest of the implementation
+        ## not tested - should this modify the weights of the particles that are resampled?
+        probabilities_of_particles = []
+        for i in range(0, self.particle_cloud):
+            probabilities_of_particles.append(particle_cloud[i].w)
+        self.particle_cloud = draw_random_sample(self.particle_cloud,probabilities_of_particles,self.n_particles)
 
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
@@ -257,6 +263,11 @@ class ParticleFilter(Node):
         """
         # TODO: implement this
         pass
+        # this isnt right yet. I'm starting with just checking the closest point, as what occupancy field has built in
+        occupancy_field.get_closest_obstacle_distance(robot_pose.x,robot_pose.y)
+
+
+        
 
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter based on a pose estimate.
