@@ -14,6 +14,7 @@ from rclpy.duration import Duration
 import math
 import time
 import numpy as np
+import random
 from occupancy_field import OccupancyField
 from helper_functions import TFHelper
 from rclpy.qos import qos_profile_sensor_data
@@ -50,7 +51,17 @@ class Particle(object):
         """ Get the weight of the particle """
         return self.w
 
+    def get_x(self):
+        """ Get the weight of the particle """
+        return self.x
 
+    def get_y(self):
+        """ Get the weight of the particle """
+        return self.y
+    
+    def get_theta(self):
+        """ Get the weight of the particle """
+        return self.theta
     # TODO: define additional helper functions if needed
 
 class ParticleFilter(Node):
@@ -162,7 +173,7 @@ class ParticleFilter(Node):
 
         if not self.current_odom_xy_theta:
             self.current_odom_xy_theta = new_odom_xy_theta
-        elif not self.particle_cloud:
+        if not self.particle_cloud:
             # now that we have all of the necessary transforms we can update the particle cloud
             self.initialize_particle_cloud(msg.header.stamp)
         elif self.moved_far_enough_to_update(new_odom_xy_theta):
@@ -178,7 +189,6 @@ class ParticleFilter(Node):
         return math.fabs(new_odom_xy_theta[0] - self.current_odom_xy_theta[0]) > self.d_thresh or \
                math.fabs(new_odom_xy_theta[1] - self.current_odom_xy_theta[1]) > self.d_thresh or \
                math.fabs(new_odom_xy_theta[2] - self.current_odom_xy_theta[2]) > self.a_thresh
-
 
     def update_robot_pose(self):
         """ Update the estimate of the robot's pose given the updated particles.
@@ -223,7 +233,7 @@ class ParticleFilter(Node):
 
         # TODO: modify particles using delta
         ## not testted
-        for i in range(0, self.particle_cloud):
+        for i in range(0, len(self.particle_cloud)):
             self.particle_cloud[i] = (self.particle_cloud[i].x + delta[0],
                                         self.particle_cloud[i].y + delta[1],
                                         self.particle_cloud[i].theta + delta[2])
@@ -240,9 +250,8 @@ class ParticleFilter(Node):
         ## not tested - should this modify the weights of the particles that are resampled?
         probabilities_of_particles = []
         for i in range(0, self.particle_cloud):
-            probabilities_of_particles.append(particle_cloud[i].w)
-        self.particle_cloud = draw_random_sample(self.particle_cloud,probabilities_of_particles,self.n_particles)
-
+            probabilities_of_particles.append(self.particle_cloud[i].w)
+        self.particle_cloud = self.draw_random_sample(self.particle_cloud,probabilities_of_particles,self.n_particles)
 
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
@@ -253,19 +262,21 @@ class ParticleFilter(Node):
         pass
         # not tested
         closest_obstacle_distance = min(r)
-        closest_obstacle_angle = theta[closest_obstacle_distance]
+        closest_obstacle_angle = theta[r.index(closest_obstacle_distance)]
 
-        for i in range(0,n_particles)
-            [closest_to_particle_x, closest_to_particle_y] = occupancy_field.get_closest_obstacle_distance(particle_cloud[i].x, particle_cloud[i].y)
-            x_diff = particle_cloud[i].x - closest_to_particle_x
-            y_diff = particle_cloud[i].y - closest_to_particle_y
-            closest_to_particle_distance = sqrt(x_diff^2 + y_diff^2)
-            closest_to_particle_angle = tan2(y_diff, x_diff)
+        for i in range(0,self.n_particles):
+            x = float(self.particle_cloud[i][0])
+            y = float(self.particle_cloud[i][1])
+            [closest_to_particle_x, closest_to_particle_y] = self.occupancy_field.get_closest_obstacle_distance(x, y)
+            x_diff = self.particle_cloud[i].get_x() - closest_to_particle_x
+            y_diff = self.particle_cloud[i].get_y() - closest_to_particle_y
+            closest_to_particle_distance = np.sqrt(x_diff^2 + y_diff^2)
+            closest_to_particle_angle = np.tan2(y_diff, x_diff)
 
             similarity = min(closest_obstacle_distance,closest_to_particle_distance)/(closest_obstacle_distance + closest_to_particle_distance) * min(closest_obstacle_angle,closest_to_particle_angle)/(closest_obstacle_angle,closest_to_particle_angle)
-            particle_cloud[i].w = particle_cloud[i].w * similarity
+            self.particle_cloud[i].w = self.particle_cloud[i].get_weight() * similarity
             
-        normalize_particles()
+        self.normalize_particles()
 
     def update_initial_pose(self, msg):
         """ Callback function to handle re-initializing the particle filter based on a pose estimate.
@@ -283,14 +294,14 @@ class ParticleFilter(Node):
         self.particle_cloud = []
         # TODO create particles 
         # written, not tested
-        particle_variance = math.pi/2 # we dont know
-        particle_theta_variance = 20 # assuming degrees
+        particle_variance = 4 # we dont know
+        particle_theta_variance = math.pi/2 # assuming degrees
 
         for i in range(0,self.n_particles):
-            x = np.random.randn(int(xy_theta[0]), int(particle_variance)) ##int
-            y = np.random.randn(int(xy_theta[1]), int(particle_variance))
-            theta = np.random.randn(int(xy_theta[2]), int(particle_theta_variance))
-            self.particle_cloud.append(Particle(x,y,theta))
+            x = float(random.uniform(int(xy_theta[0] - particle_variance/2), int(xy_theta[0] + particle_variance/2)))
+            y = float(random.uniform(int(xy_theta[1] - particle_variance/2), int(xy_theta[1] + particle_variance/2)))
+            theta = float(random.uniform(int(xy_theta[2] - particle_theta_variance/2), int(xy_theta[2] + particle_theta_variance/2)))
+            self.particle_cloud.append(Particle(x,y,theta,0.1))
 
         self.normalize_particles()
 
@@ -307,13 +318,13 @@ class ParticleFilter(Node):
 
     def publish_particles(self, timestamp):
         particles_conv = []
-        for p in self.particle_cloud:
-            particles_conv.append(p.as_pose())
+        for p in range(0,self.n_particles):
+            temp = self.particle_cloud[p]
+            particles_conv.append(temp.as_pose())
         # actually send the message so that we can view it in rviz
         self.particle_pub.publish(PoseArray(header=Header(stamp=timestamp,
                                             frame_id=self.map_frame),
                                   poses=particles_conv))
-
 
     def scan_received(self, msg):
         self.last_scan_timestamp = msg.header.stamp
