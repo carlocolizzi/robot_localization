@@ -21,20 +21,6 @@ def stamped_transform_to_pose(t):
     return Pose(position=Point(x=t.translation.x, y=t.translation.y, z=t.translation.z),
                 orientation=Quaternion(x=t.rotation.x, y=t.rotation.y, z=t.rotation.z, w=t.rotation.w))
 
-def draw_random_sample(choices, probabilities, n):
-    """ Return a random sample of n elements from the set choices with the specified probabilities
-            choices: the values to sample from represented as a list
-            probabilities: the probability of selecting each element in choices represented as a list
-            n: the number of samples
-    """
-    values = np.array(range(len(choices)))
-    probs = np.array(probabilities)
-    bins = np.add.accumulate(probs)
-    inds = values[np.digitize(random_sample(n), bins)]
-    samples = []
-    for i in inds:
-        samples.append(deepcopy(choices[int(i)]))
-    return samples
 
 class TFHelper(object):
     """ TFHelper Provides functionality to convert poses between various
@@ -47,6 +33,21 @@ class TFHelper(object):
         self.tf_broadcaster = TransformBroadcaster(node)
         self.node = node        # hold onto this for logging
         self.transform_tolerance = Duration(seconds=0.08)    # tolerance for mismatch between scan and odom timestamp
+
+    def draw_random_sample(self, choices, probabilities, n):
+        """ Return a random sample of n elements from the set choices with the specified probabilities
+                choices: the values to sample from represented as a list
+                probabilities: the probability of selecting each element in choices represented as a list
+                n: the number of samples
+        """
+        values = np.array(range(len(choices)))
+        probs = np.array(probabilities)
+        bins = np.add.accumulate(probs)
+        inds = values[np.digitize(random_sample(n), bins)]
+        samples = []
+        for i in inds:
+            samples.append(deepcopy(choices[int(i)]))
+        return samples
 
     def convert_translation_rotation_to_pose(self, translation, rotation):
         """ Convert from representation of a pose as translation and rotation

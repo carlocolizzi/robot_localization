@@ -3,6 +3,7 @@
 """ This is the starter code for the robot localization project """
 
 from statistics import variance
+import statistics
 import rclpy
 from threading import Thread
 from rclpy.time import Time
@@ -92,7 +93,7 @@ class ParticleFilter(Node):
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from 
 
-        self.n_particles = 300          # the number of particles to use
+        self.n_particles = 300         # the number of particles to use
 
         self.d_thresh = 0.2             # the amount of linear movement before performing an update
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
@@ -162,7 +163,7 @@ class ParticleFilter(Node):
                 self.scan_to_process = None
             return
         
-        (r, theta) = self.transform_helper.convert_scan_to_polar_in_robot_frame(msg, self.base_frame)
+        [r, theta] = self.transform_helper.convert_scan_to_polar_in_robot_frame(msg, self.base_frame)
         print("r[0]={0}, theta[0]={1}".format(r[0], theta[0]))
         # clear the current scan so that we can process the next one
         self.scan_to_process = None
@@ -201,9 +202,22 @@ class ParticleFilter(Node):
 
         # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
         # just to get started we will fix the robot's pose to always be at the origin
+        xs = []
+        ys = []
+        thetas = []
 
+        for particle in self.particle_cloud:
+            xs.append(particle.x)
+            ys.append(particle.y)
+            thetas.append(particle.theta)
+        x = statistics.mean(xs)
+        y = statistics.mean(ys)
+        theta = statistics.mean(thetas)
+        self.robot_pose = Particle(x, y, theta, 0.1).as_pose()
+
+        """
         max_index = 0
-        for i in self.particle_cloud:
+        for i in range(0, len(self.particle_cloud)):
             if self.particle_cloud[i].w > self.particle_cloud[max_index].w :
                 max_index = i
 
@@ -211,6 +225,7 @@ class ParticleFilter(Node):
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
                                                         self.odom_pose)
+        """
 
     def update_particles_with_odom(self):
         """ Update the particles using the newly given odometry pose.
@@ -232,12 +247,26 @@ class ParticleFilter(Node):
             return
 
         # TODO: modify particles using delta
+
+        theta1 = math.atan2(delta[1], delta[0]) - self.current_odom_xy_theta[2]
+        r = math.sqrt(delta[0]**2 + delta[1]**2)
+        theta2 = delta[2]- theta1
+
+        for particle in self.particle_cloud:
+            new_theta1 = np.random.normal(theta1, 3*(math.pi/ 180))
+            new_theta2 = np.random.normal(theta2, 3*(math.pi/ 180))
+            new_r = np.random.normal(r, 0.15)
+
+            particle.theta += new_theta1 + new_theta2
+            particle.x += new_r * math.cos(particle.theta)
+            particle.y += new_r * math.sin(particle.theta)
+        """
         ## not testted
         for i in range(0, len(self.particle_cloud)):
-            self.particle_cloud[i] = (self.particle_cloud[i].x + delta[0],
+            self.particle_cloud[i] = Particle(self.particle_cloud[i].x + delta[0],
                                         self.particle_cloud[i].y + delta[1],
-                                        self.particle_cloud[i].theta + delta[2])
-
+                                        self.particle_cloud[i].theta + delta[2], 0.1)
+        """
     def resample_particles(self):
         """ Resample the particles according to the new particle weights.
             The weights stored with each particle should define the probability that a particular
@@ -249,10 +278,12 @@ class ParticleFilter(Node):
         # TODO: fill out the rest of the implementation
         ## not tested - should this modify the weights of the particles that are resampled?
         probabilities_of_particles = []
-        for i in range(0, self.particle_cloud):
+        new_particle_cloud = []
+        
+        for i in range(0, len(self.particle_cloud)):
             probabilities_of_particles.append(self.particle_cloud[i].w)
-        self.particle_cloud = self.draw_random_sample(self.particle_cloud,probabilities_of_particles,self.n_particles)
-
+        self.particle_cloud = self.transform_helper.draw_random_sample(self.particle_cloud,probabilities_of_particles,self.n_particles)
+        
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
             r: the distance readings to obstacles
@@ -262,19 +293,23 @@ class ParticleFilter(Node):
         pass
         # not tested
         closest_obstacle_distance = min(r)
-        closest_obstacle_angle = theta[r.index(closest_obstacle_distance)]
+        #closest_obstacle_angle = theta[r.index(closest_obstacle_distance)]
 
         for i in range(0,self.n_particles):
-            x = float(self.particle_cloud[i][0])
-            y = float(self.particle_cloud[i][1])
-            [closest_to_particle_x, closest_to_particle_y] = self.occupancy_field.get_closest_obstacle_distance(x, y)
-            x_diff = self.particle_cloud[i].get_x() - closest_to_particle_x
-            y_diff = self.particle_cloud[i].get_y() - closest_to_particle_y
-            closest_to_particle_distance = np.sqrt(x_diff^2 + y_diff^2)
-            closest_to_particle_angle = np.tan2(y_diff, x_diff)
+            x = self.particle_cloud[i].x
+            y = self.particle_cloud[i].y
+            #y = float(self.particle_cloud[i][1])
+            closest_to_particle = self.occupancy_field.get_closest_obstacle_distance(x, y)
+            #[closest_to_particle_x, closest_to_particle_y] = self.occupancy_field.get_closest_obstacle_distance(x, y)
+            #x_diff = x - closest_to_particle_x[0]
+            #y_diff = y - closest_to_particle_x[0]
+            #closest_to_particle_distance = closest_to_particle #np.sqrt(x_diff^2 + y_diff^2)
+            #closest_to_particle_angle = np.tan2(y_diff, x_diff)
 
-            similarity = min(closest_obstacle_distance,closest_to_particle_distance)/(closest_obstacle_distance + closest_to_particle_distance) * min(closest_obstacle_angle,closest_to_particle_angle)/(closest_obstacle_angle,closest_to_particle_angle)
-            self.particle_cloud[i].w = self.particle_cloud[i].get_weight() * similarity
+            similarity = 1/ ((closest_to_particle-closest_obstacle_distance)**2)#min(closest_obstacle_distance,closest_to_particle_distance)/(closest_obstacle_distance + closest_to_particle_distance) * min(closest_obstacle_angle,closest_to_particle_angle)/(closest_obstacle_angle,closest_to_particle_angle)
+            if math.isnan(similarity):
+                similarity = 0.001
+            self.particle_cloud[i].w = self.particle_cloud[i].w * similarity
             
         self.normalize_particles()
 
@@ -309,12 +344,19 @@ class ParticleFilter(Node):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
         # TODO: test this
         # we want all of the particle weights to sum to 1, to do this, we'll sum all of the current weights and divide each weight by this value
-        current_sum_of_weights = 0
+        #current_sum_of_weights = 0
+        weights = []
         for i in range(0, self.n_particles):
-            current_sum_of_weights += self.particle_cloud[i].get_weight()
+         #   current_sum_of_weights += self.particle_cloud[i].w
+            weights.append(self.particle_cloud[i].w)
        
+        #for i in range(0, self.n_particles):
+         #   self.particle_cloud[i].w = self.particle_cloud[i].w / current_sum_of_weights
+        
+        norm = [float(w)/sum(weights) for w in weights]
+        
         for i in range(0, self.n_particles):
-            self.particle_cloud[i].w = self.particle_cloud[i].get_weight() / current_sum_of_weights
+            self.particle_cloud[i].w = norm[i]
 
     def publish_particles(self, timestamp):
         particles_conv = []
