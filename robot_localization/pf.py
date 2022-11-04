@@ -217,7 +217,11 @@ class ParticleFilter(Node):
 
         """
         max_index = 0
+<<<<<<< Updated upstream
         for i in range(0, len(self.particle_cloud)):
+=======
+        for i in self.particle_cloud:
+>>>>>>> Stashed changes
             if self.particle_cloud[i].w > self.particle_cloud[max_index].w :
                 max_index = i
 
@@ -247,6 +251,10 @@ class ParticleFilter(Node):
             return
 
         # TODO: modify particles using delta
+        for i in self.particle_cloud:
+            self.particle_cloud[i] = (self.particle_cloud[i].x + delta[0],
+                                        self.particle_cloud[i].y + delta[1],
+                                        self.particle_cloud[i].theta + delta[2])
 
         theta1 = math.atan2(delta[1], delta[0]) - self.current_odom_xy_theta[2]
         r = math.sqrt(delta[0]**2 + delta[1]**2)
@@ -344,6 +352,7 @@ class ParticleFilter(Node):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
         # TODO: test this
         # we want all of the particle weights to sum to 1, to do this, we'll sum all of the current weights and divide each weight by this value
+<<<<<<< Updated upstream
         #current_sum_of_weights = 0
         weights = []
         for i in range(0, self.n_particles):
@@ -358,6 +367,13 @@ class ParticleFilter(Node):
         for i in range(0, self.n_particles):
             self.particle_cloud[i].w = norm[i]
 
+=======
+        current_sum_of_weights = sum(self.particle_cloud.w)
+       
+        for i in self.n_particles:
+            self.particle_cloud[i].w = self.particle_cloud[i].w / current_sum_of_weights
+            
+>>>>>>> Stashed changes
     def publish_particles(self, timestamp):
         particles_conv = []
         for p in range(0,self.n_particles):
